@@ -9,7 +9,6 @@ use bevy::prelude::*;
 
 fn main() {
     App::new()
-        .insert_resource(TerrainData(vec![]))
         .add_plugins((
             DefaultPlugins,
             FreeCameraPlugin,
@@ -41,8 +40,6 @@ fn setup(
     spawn_chunk(&mut commands, &mut meshes, &mut materials, Dir3::NEG_Y);
     spawn_chunk(&mut commands, &mut meshes, &mut materials, Dir3::NEG_Z);
 }
-
-use serde::{Deserialize, Serialize};
 
 pub fn spawn_chunk(
     commands: &mut Commands,
@@ -96,6 +93,3 @@ pub fn spawn_chunk(
         }),
     ));
 }
-
-#[derive(Resource, Serialize, Deserialize)]
-pub struct TerrainData(pub Vec<f32>);
