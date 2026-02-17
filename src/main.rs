@@ -18,16 +18,7 @@ fn main() {
             // PhysicsDebugPlugin,
         ))
         .add_systems(Startup, setup)
-        .add_plugins(FpsOverlayPlugin {
-            config: FpsOverlayConfig {
-                frame_time_graph_config: FrameTimeGraphConfig {
-                    enabled: true,
-                    min_fps: 40.0,
-                    target_fps: 100.0,
-                },
-                ..default()
-            },
-        })
+        .add_plugins(FpsOverlayPlugin::default())
         .run();
 }
 
