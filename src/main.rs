@@ -1,7 +1,7 @@
 use avian3d::PhysicsPlugins;
 use avian3d::prelude::{Collider, RigidBody};
 use bevy::camera_controller::free_camera::{FreeCamera, FreeCameraPlugin};
-use bevy::dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin, FrameTimeGraphConfig};
+use bevy::dev_tools::fps_overlay::FpsOverlayPlugin;
 use bevy::prelude::*;
 
 // #[cfg(debug_assertions)]
