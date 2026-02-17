@@ -32,13 +32,18 @@ fn setup(
     ));
     commands.spawn((Camera3d::default(), FreeCamera::default()));
 
-    spawn_chunk(&mut commands, &mut meshes, &mut materials, Dir3::X);
-    spawn_chunk(&mut commands, &mut meshes, &mut materials, Dir3::Y);
-    spawn_chunk(&mut commands, &mut meshes, &mut materials, Dir3::Z);
+    let normals = vec![
+        Dir3::X,
+        Dir3::Y,
+        Dir3::Z,
+        Dir3::NEG_X,
+        Dir3::NEG_Y,
+        Dir3::NEG_Z,
+    ];
 
-    spawn_chunk(&mut commands, &mut meshes, &mut materials, Dir3::NEG_X);
-    spawn_chunk(&mut commands, &mut meshes, &mut materials, Dir3::NEG_Y);
-    spawn_chunk(&mut commands, &mut meshes, &mut materials, Dir3::NEG_Z);
+    for normal in normals {
+        spawn_chunk(&mut commands, &mut meshes, &mut materials, normal);
+    }
 }
 
 pub fn spawn_chunk(
