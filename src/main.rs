@@ -68,16 +68,31 @@ pub fn spawn_chunk(
         .unwrap()
     {
         for pos in positions.iter_mut() {
+            // Positioning the plane to normalize it
             let position = normal.as_vec3().to_array();
             pos[0] += SIZE * position[0];
             pos[1] += SIZE * position[1];
             pos[2] += SIZE * position[2];
-            let vec = Vec3 {
+
+            let p = Vec3 {
                 x: pos[0],
                 y: pos[1],
                 z: pos[2],
             };
-            *pos = (vec.normalize() * RADIUS).to_array();
+
+            // Even spacing of vertices on sphere
+            let x = p.x
+                * (1.0 - (p.y.powi(2) + p.z.powi(2)) / 2.0 + (p.y.powi(2) * p.z.powi(2) / 3.0))
+                    .sqrt();
+            let y = p.y
+                * (1.0 - (p.z.powi(2) + p.x.powi(2)) / 2.0 + (p.z.powi(2) * p.x.powi(2) / 3.0))
+                    .sqrt();
+            let z = p.z
+                * (1.0 - (p.x.powi(2) + p.y.powi(2)) / 2.0 + (p.x.powi(2) * p.y.powi(2) / 3.0))
+                    .sqrt();
+            let even_spaced_pos = Vec3::new(x, y, z);
+
+            *pos = (even_spaced_pos.normalize() * RADIUS).to_array();
         }
     }
 
