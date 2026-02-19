@@ -6,6 +6,7 @@ use bevy::prelude::*;
 
 #[cfg(debug_assertions)]
 use avian3d::debug_render::PhysicsDebugPlugin;
+use reqwest::header::UPGRADE_INSECURE_REQUESTS;
 
 fn main() {
     App::new()
@@ -31,6 +32,11 @@ fn setup(
         Transform::from_xyz(1.0, 1.0, 1.0).looking_at(Vec3::ZERO, Vec3::Y),
     ));
     commands.spawn((Camera3d::default(), FreeCamera::default()));
+    commands.spawn((
+        Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
+        MeshMaterial3d(materials.add(Color::srgb_u8(124, 144, 255))),
+        Transform::from_xyz(0.0, 0.5, 0.0),
+    ));
 
     let normals = vec![
         Dir3::X,
@@ -52,26 +58,42 @@ pub fn spawn_chunk(
     materials: &mut ResMut<Assets<StandardMaterial>>,
     normal: Dir3,
 ) {
-    // const SIZE: f32 = 0.2;
-    const RADIUS: f32 = 5.0;
+    const SIZE: f32 = 2.0;
     const CHUNKS: u8 = 9;
+    const SUBDIV: u8 = CHUNKS.isqrt();
 
-    for i in 0..1 {
+    for i in 0..CHUNKS {
+        let a = (i % SUBDIV) as f32 * (SIZE / SUBDIV as f32) - (SIZE / SUBDIV as f32);
+        let b = (i / SUBDIV) as f32 * (SIZE / SUBDIV as f32) - (SIZE / SUBDIV as f32);
+
+        let mut translation_per_chunk = Vec3::ZERO;
+        if normal == Dir3::NEG_X || normal == Dir3::X {
+            translation_per_chunk.y = a;
+            translation_per_chunk.z = b;
+        }
+        if normal == Dir3::NEG_Y || normal == Dir3::Y {
+            translation_per_chunk.x = a;
+            translation_per_chunk.z = b;
+        }
+        if normal == Dir3::NEG_Z || normal == Dir3::Z {
+            translation_per_chunk.x = a;
+            translation_per_chunk.y = b;
+        }
+
+        // Translate this to be normalized properly
         let chunk_translation = Vec3 {
+            // The normal shifts the planes in a range from -1 to 1, thats double the shift we want to have
             x: normal.x,
             y: normal.y,
             z: normal.z,
-        };
+        } + translation_per_chunk;
 
         let mut earth_mesh_even = Mesh::from(
             Plane3d::default()
                 .mesh()
-                .size(
-                    2.0, // CHUNKS.isqrt() as f32,
-                    2.0, // CHUNKS.isqrt() as f32,
-                )
+                .size(SIZE / SUBDIV as f32, SIZE / SUBDIV as f32)
                 .normal(normal)
-                .subdivisions(32),
+                .subdivisions(8),
         )
         .translated_by(chunk_translation);
 
@@ -103,6 +125,7 @@ pub fn spawn_chunk(
         }
 
         earth_mesh_even.compute_normals();
+        const RADIUS: f32 = 0.5;
         commands.spawn((
             Collider::trimesh_from_mesh(&earth_mesh_even).unwrap(),
             Mesh3d(meshes.add(earth_mesh_even)),
@@ -114,8 +137,13 @@ pub fn spawn_chunk(
             })),
             Transform::from_translation(Vec3 {
                 x: 0.0,
-                y: -0.5 * RADIUS,
+                y: -0.5,
                 z: 0.0,
+            })
+            .with_scale(Vec3 {
+                x: RADIUS,
+                y: RADIUS,
+                z: RADIUS,
             }),
         ));
     }
