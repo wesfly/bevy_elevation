@@ -1,21 +1,33 @@
 use avian3d::PhysicsPlugins;
-use avian3d::prelude::{Collider, RigidBody};
-use bevy::camera_controller::free_camera::{FreeCamera, FreeCameraPlugin};
-use bevy::dev_tools::fps_overlay::FpsOverlayPlugin;
-use bevy::prelude::*;
-
 #[cfg(debug_assertions)]
-use avian3d::debug_render::PhysicsDebugPlugin;
-use reqwest::header::UPGRADE_INSECURE_REQUESTS;
+use avian3d::prelude::PhysicsDebugPlugin;
+use avian3d::prelude::{Collider, RigidBody};
+use bevy::camera::Exposure;
+use bevy::camera_controller::free_camera::{FreeCamera, FreeCameraPlugin};
+use bevy::core_pipeline::tonemapping::Tonemapping;
+use bevy::dev_tools::fps_overlay::FpsOverlayPlugin;
+use bevy::light::light_consts::lux;
+use bevy::light::{AtmosphereEnvironmentMapLight, CascadeShadowConfigBuilder};
+use bevy::pbr::{Atmosphere, AtmosphereSettings, ScatteringMedium};
+use bevy::post_process::bloom::Bloom;
+use bevy::prelude::*;
+use bevy::render::view::Hdr;
+use big_space::prelude::*;
 
 fn main() {
     App::new()
+        .insert_resource(ClearColor(Color::LinearRgba(LinearRgba {
+            red: 0.0,
+            green: 0.0,
+            blue: 0.0,
+            alpha: 1.0,
+        })))
         .add_plugins((
             DefaultPlugins,
             FreeCameraPlugin,
             PhysicsPlugins::default(),
-            #[cfg(debug_assertions)]
-            PhysicsDebugPlugin,
+            // #[cfg(debug_assertions)]
+            // PhysicsDebugPlugin,
         ))
         .add_systems(Startup, setup)
         .add_plugins(FpsOverlayPlugin::default())
@@ -26,16 +38,38 @@ fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    mut scattering_mediums: ResMut<Assets<ScatteringMedium>>,
 ) {
+    let cascade = CascadeShadowConfigBuilder {
+        maximum_distance: 50000.0,
+        ..Default::default()
+    }
+    .build();
+
     commands.spawn((
-        DirectionalLight::default(),
+        DirectionalLight {
+            shadows_enabled: true,
+            illuminance: lux::RAW_SUNLIGHT,
+            ..default()
+        },
+        cascade,
         Transform::from_xyz(1.0, 1.0, 1.0).looking_at(Vec3::ZERO, Vec3::Y),
     ));
-    commands.spawn((Camera3d::default(), FreeCamera::default()));
     commands.spawn((
-        Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
-        MeshMaterial3d(materials.add(Color::srgb_u8(124, 144, 255))),
-        Transform::from_xyz(0.0, 0.5, 0.0),
+        Camera3d::default(),
+        Atmosphere::earthlike(scattering_mediums.add(ScatteringMedium::default())),
+        AtmosphereEnvironmentMapLight::default(),
+        AtmosphereSettings::default(),
+        Exposure::SUNLIGHT,
+        Tonemapping::AgX,
+        Bloom::NATURAL,
+        FreeCamera {
+            run_speed: 1000000.0,
+            walk_speed: 10000.0,
+            ..default()
+        },
+        Hdr,
+        FloatingOrigin,
     ));
 
     let normals = vec![
@@ -48,23 +82,24 @@ fn setup(
     ];
 
     for normal in normals {
-        spawn_chunk(&mut commands, &mut meshes, &mut materials, normal);
+        spawn_face(&mut commands, &mut meshes, &mut materials, normal);
     }
 }
 
-pub fn spawn_chunk(
+pub fn spawn_face(
     commands: &mut Commands,
     meshes: &mut ResMut<Assets<Mesh>>,
     materials: &mut ResMut<Assets<StandardMaterial>>,
     normal: Dir3,
 ) {
     const SIZE: f32 = 2.0;
-    const CHUNKS: u8 = 9;
+    const CHUNKS: u8 = 49;
     const SUBDIV: u8 = CHUNKS.isqrt();
+    const RADIUS: f32 = 6_371_000.0;
 
     for i in 0..CHUNKS {
-        let a = (i % SUBDIV) as f32 * (SIZE / SUBDIV as f32) - (SIZE / SUBDIV as f32);
-        let b = (i / SUBDIV) as f32 * (SIZE / SUBDIV as f32) - (SIZE / SUBDIV as f32);
+        let a = (i % SUBDIV) as f32 * (SIZE / SUBDIV as f32) - (SIZE / SUBDIV as f32 * 3.0);
+        let b = (i / SUBDIV) as f32 * (SIZE / SUBDIV as f32) - (SIZE / SUBDIV as f32 * 3.0);
 
         let mut translation_per_chunk = Vec3::ZERO;
         if normal == Dir3::NEG_X || normal == Dir3::X {
@@ -82,7 +117,6 @@ pub fn spawn_chunk(
 
         // Translate this to be normalized properly
         let chunk_translation = Vec3 {
-            // The normal shifts the planes in a range from -1 to 1, thats double the shift we want to have
             x: normal.x,
             y: normal.y,
             z: normal.z,
@@ -125,7 +159,6 @@ pub fn spawn_chunk(
         }
 
         earth_mesh_even.compute_normals();
-        const RADIUS: f32 = 0.5;
         commands.spawn((
             Collider::trimesh_from_mesh(&earth_mesh_even).unwrap(),
             Mesh3d(meshes.add(earth_mesh_even)),
@@ -137,7 +170,7 @@ pub fn spawn_chunk(
             })),
             Transform::from_translation(Vec3 {
                 x: 0.0,
-                y: -0.5,
+                y: -RADIUS,
                 z: 0.0,
             })
             .with_scale(Vec3 {
