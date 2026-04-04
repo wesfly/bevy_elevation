@@ -1,18 +1,22 @@
-use avian3d::PhysicsPlugins;
+use avian3d::{
+    PhysicsPlugins,
+    prelude::{Collider, RigidBody},
+};
+use bevy::{
+    camera::Exposure,
+    camera_controller::free_camera::{FreeCamera, FreeCameraPlugin},
+    core_pipeline::tonemapping::Tonemapping,
+    dev_tools::fps_overlay::FpsOverlayPlugin,
+    light::{AtmosphereEnvironmentMapLight, CascadeShadowConfigBuilder, light_consts::lux},
+    pbr::{Atmosphere, AtmosphereSettings, ScatteringMedium},
+    post_process::bloom::Bloom,
+    prelude::*,
+    render::view::Hdr,
+};
+use big_space::prelude::*;
+
 #[cfg(debug_assertions)]
 use avian3d::prelude::PhysicsDebugPlugin;
-use avian3d::prelude::{Collider, RigidBody};
-use bevy::camera::Exposure;
-use bevy::camera_controller::free_camera::{FreeCamera, FreeCameraPlugin};
-use bevy::core_pipeline::tonemapping::Tonemapping;
-use bevy::dev_tools::fps_overlay::FpsOverlayPlugin;
-use bevy::light::light_consts::lux;
-use bevy::light::{AtmosphereEnvironmentMapLight, CascadeShadowConfigBuilder};
-use bevy::pbr::{Atmosphere, AtmosphereSettings, ScatteringMedium};
-use bevy::post_process::bloom::Bloom;
-use bevy::prelude::*;
-use bevy::render::view::Hdr;
-use big_space::prelude::*;
 
 fn main() {
     App::new()
