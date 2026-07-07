@@ -1,8 +1,12 @@
 use bevy::{
+    anti_alias::taa::TemporalAntiAliasing,
     camera::Exposure,
     camera_controller::free_camera::{FreeCamera, FreeCameraPlugin},
     color::palettes::css::GREEN,
-    core_pipeline::tonemapping::Tonemapping,
+    core_pipeline::{
+        prepass::{DeferredPrepass, DepthPrepass},
+        tonemapping::Tonemapping,
+    },
     dev_tools::diagnostics_overlay::{DiagnosticsOverlay, DiagnosticsOverlayPlugin},
     diagnostic::FrameTimeDiagnosticsPlugin,
     image::{
@@ -41,7 +45,6 @@ fn main() {
             blue: 0.0,
             alpha: 1.0,
         })))
-        .insert_resource(GlobalAmbientLight::NONE)
         .insert_resource(TerrainCacheResource::default())
         .add_plugins((
             default_plugins,
@@ -65,11 +68,11 @@ fn main() {
 const EARTH_RADIUS: f32 = 6_360_000.0;
 
 const SIZE: f32 = 2.0;
-const SUBDIV: u32 = 256;
+const SUBDIV: u32 = 4096 * 2;
 const CHUNKS: u32 = SUBDIV.pow(2);
-const ZOOM: u8 = 8;
+const ZOOM: u8 = 14;
 const SUBDIV_PER_TILE: u32 = 64;
-const VIEW_RADIUS: f32 = 200_000.0;
+const VIEW_RADIUS: f32 = 20_000.0;
 
 #[derive(Component)]
 struct Camera;
@@ -140,6 +143,16 @@ fn setup(
             },
             FloatingOrigin,
             Transform::from_translation(cell_offset + Vec3::new(0.0, 0.0, 10.0)),
+            (
+                Msaa::Off,
+                DepthPrepass,
+                DeferredPrepass,
+                TemporalAntiAliasing::default(),
+            ),
+            // ScreenSpaceReflections {
+            //     min_perceptual_roughness: 0.0..0.0,
+            //     ..default()
+            // },
         ));
 
         parent.spawn_spatial((
@@ -176,8 +189,8 @@ const SHADER_ASSET_PATH: &str = "shaders/terrain.wgsl";
 
 #[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
 pub struct TerrainMaterial {
-    #[texture(101)]
-    #[sampler(102)]
+    #[texture(100)]
+    #[sampler(101)]
     pub normals: Handle<Image>,
 }
 
@@ -479,7 +492,7 @@ async fn build_mesh(
 
             let coord = pos_to_coord(*pos);
 
-            let factor = 1.0 + (0.0000002 * get_height_at_coord(coord, ZOOM, &cache));
+            let factor = 1.0 + (0.0000001 * get_height_at_coord(coord, ZOOM, &cache));
             pos[0] *= factor;
             pos[1] *= factor;
             pos[2] *= factor;

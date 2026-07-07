@@ -9,8 +9,8 @@
 
 @group(0) @binding(1) var<uniform> globals: Globals;
 
-@group(#{MATERIAL_BIND_GROUP}) @binding(103) var normals_texture: texture_2d<f32>;
-@group(#{MATERIAL_BIND_GROUP}) @binding(104) var normals_sampler: sampler;
+@group(#{MATERIAL_BIND_GROUP}) @binding(100) var normals_texture: texture_2d<f32>;
+@group(#{MATERIAL_BIND_GROUP}) @binding(101) var normals_sampler: sampler;
 
 // Samples a single octave of noise and returns the resulting normal.
 fn sample_noise_octave(uv: vec2<f32>, strength: f32) -> vec3<f32> {
@@ -39,27 +39,31 @@ fn fragment(in: VertexOutput, @builtin(front_facing) is_front: bool) -> Fragment
     // Create the PBR input.
     var pbr_input = pbr_input_from_standard_material(in, is_front);
     // Bump the normal.
-    pbr_input.N += sample_noise(in.uv, globals.time);
+    let bump= sample_noise(in.uv, globals.time);
+    pbr_input.N = normalize(pbr_input.N + bump);
 
-    // let slope = length(cross(pbr_input.N, vec3(0.0, 1.0, 0.0)));
+    let pos = normalize(pbr_input.position);
+    let slope = length(cross(pbr_input.N, pos));
+
+    pbr_input.material.base_color.r = 1.0;
 
     // Based on mediterranean terrain
-    // if slope > 0.6 {
-    //     // rock
-    //     pbr_input.material.base_color.r = 0.55;
-    //     pbr_input.material.base_color.g = 0.5;
-    //     pbr_input.material.base_color.b = 0.33;
-    // } else if slope > 0.3 {
-    //     // forest
-    //     pbr_input.material.base_color.r += 0.08;
-    //     pbr_input.material.base_color.g += 0.15;
-    //     pbr_input.material.base_color.b += 0.12;
-    // } else {
-    //     // flatland
-    //     pbr_input.material.base_color.r += 0.2 - slope * 0.4;
-    //     pbr_input.material.base_color.g += 0.3 - slope * 0.1;
-    //     pbr_input.material.base_color.b += 0.15 - slope * 0.4;
-    // }
+    if slope > 0.6 {
+        // rock
+        pbr_input.material.base_color.r = 0.55;
+        pbr_input.material.base_color.g = 0.5;
+        pbr_input.material.base_color.b = 0.33;
+    } else if slope > 0.3 {
+        // forest
+        pbr_input.material.base_color.r += 0.08;
+        pbr_input.material.base_color.g += 0.15;
+        pbr_input.material.base_color.b += 0.12;
+    } else {
+        // flatland
+        pbr_input.material.base_color.r += 0.2 - slope * 0.4;
+        pbr_input.material.base_color.g += 0.3 - slope * 0.1;
+        pbr_input.material.base_color.b += 0.15 - slope * 0.4;
+    }
 
 
     // Send the rest to the deferred shader.
